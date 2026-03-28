@@ -489,7 +489,7 @@ function renderInsight(entries, score) {
         ? 'Elite focus day \u2014 keep this energy going'
         : 'Streak is safe \u2014 more productive time locks it in';
     } else {
-      tone = 'warn';
+      tone = 'ok'; // Keep the container green since we are recommending good sites
       if (goodDomains.length >= 2) {
         msg = `\u26a1 ${goodDomains[0].domain} and ${goodDomains[1].domain} could pull your score up`;
       } else if (goodDomains.length === 1) {
