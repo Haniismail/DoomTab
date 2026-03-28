@@ -725,7 +725,7 @@ function showTab(id) {
 
 // ─── Collecting State ─────────────────────────────────────────────────────────
 
-function renderCollecting(container, icon, days, minDays, message) {
+function renderCollecting(container, icon, days, minDays, titleText, message) {
   container.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.className = 'collecting';
@@ -736,7 +736,7 @@ function renderCollecting(container, icon, days, minDays, message) {
 
   const title = document.createElement('div');
   title.className = 'collecting-title';
-  title.textContent = 'Collecting data…';
+  title.textContent = titleText || 'Collecting data…';
 
   const sub = document.createElement('div');
   sub.className = 'collecting-sub';
@@ -765,8 +765,8 @@ function renderPatterns() {
   const data = analyzePatterns(storage, role);
 
   if (data.daysOfData < data.minDays) {
-    renderCollecting(container, '📊', data.daysOfData, data.minDays,
-      'DoomTab needs 3+ days of history\nto detect your browsing patterns.');
+    renderCollecting(container, '📊', data.daysOfData, data.minDays, 'Mapping Your Patterns...',
+      'We need data to build your Danger Zone Heatmap and track your Doom-Scrolling Velocity.');
     return;
   }
 
@@ -887,8 +887,8 @@ function renderPatterns() {
   }
 
   if (container.children.length === 0) {
-    renderCollecting(container, '📊', data.daysOfData, 5,
-      'Not enough varied data yet.\nKeep browsing naturally!');
+    renderCollecting(container, '📊', data.daysOfData, 5, 'Waiting for deeper patterns...',
+      'Keep browsing naturally to unlock your Danger Zone Heatmap and Doom-Scrolling Velocity.');
   }
 }
 
@@ -902,8 +902,8 @@ function renderTriggers() {
   container.innerHTML = '';
 
   if (data.daysOfData === 0 || (data.exitTriggers.length === 0 && data.doomSpirals.length === 0 && data.todaySwitchCount === 0)) {
-    renderCollecting(container, '⚡', data.daysOfData, 1,
-      'No distraction triggers detected yet.\nBrowse normally — DoomTab is watching.');
+    renderCollecting(container, '⚡', data.daysOfData, 1, 'Analyzing Triggers...',
+      "We're mapping out the Habit Loops and 'gateway' sites that cause you to spiral into distraction.");
     return;
   }
 
@@ -1039,8 +1039,8 @@ function renderFocus() {
   container.innerHTML = '';
 
   if (!data.hasData) {
-    renderCollecting(container, '🎯', 0, 1,
-      'No hourly data yet.\nBrowse for a while — DoomTab tracks by the hour.');
+    renderCollecting(container, '🎯', 0, 1, 'Finding Your Focus...',
+      "We're looking for your Productivity Anchors and Deep Work Blocks to show you how to replicate your best days.");
     return;
   }
 
