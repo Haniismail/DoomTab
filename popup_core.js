@@ -23,7 +23,7 @@ function renderAll(entries) {
 document.addEventListener('DOMContentLoaded', async () => {
   await load();
 
-  initOnboarding();
+  initOnboarding();   // also calls updateTrackingDot() internally
   initSettings();
 
   if (userRole) {

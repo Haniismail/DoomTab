@@ -193,8 +193,8 @@ async function checkStreakWarning() {
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
 
-async function flushTime(url, startTimeMs) {
-  const domain = extractDomain(url);
+async function flushTime(activeTab, startTimeMs) {
+  const domain = activeTab.domain || extractDomain(activeTab.url);
   if (!domain) return;
   const elapsed = Math.floor((Date.now() - startTimeMs) / 1000);
   if (elapsed <= 0) return;
@@ -222,28 +222,69 @@ async function logTransition(fromDomain, toDomain) {
   await chrome.storage.local.set({ _transitions: transitions });
 }
 
-async function startTracking(url, tabId) {
-  if (!extractDomain(url)) {
-    await chrome.storage.local.remove(['_activeTab', '_startTime']);
+async function updateActionBadge(domain) {
+  if (!domain) {
+    chrome.action.setBadgeText({ text: '' });
     return;
   }
-  await chrome.storage.local.set({ _activeTab: { url, tabId }, _startTime: Date.now() });
+  const { _userRole } = await chrome.storage.local.get('_userRole');
+  const role = _userRole || 'other';
+  const cat = categorize(domain);
+  const prodCats = ROLE_PRODUCTIVE[role] || ROLE_PRODUCTIVE.other;
+
+  if (DISTRACTION_CATEGORIES.includes(cat)) {
+    chrome.action.setBadgeText({ text: 'DOOM' });
+    chrome.action.setBadgeBackgroundColor({ color: '#e84060' });
+  } else if (prodCats.includes(cat)) {
+    chrome.action.setBadgeText({ text: 'WORK' });
+    chrome.action.setBadgeBackgroundColor({ color: '#56c9a0' });
+  } else {
+    chrome.action.setBadgeText({ text: '' }); // Neutral or Uncategorized
+  }
+}
+
+async function startTracking(url, tabId) {
+  let domain = extractDomain(url);
+  if (!domain) {
+    await chrome.storage.local.remove(['_activeTab', '_startTime']);
+    updateActionBadge(null);
+    return;
+  }
+
+  // Attempt to get YouTube specific genre
+  if (domain === 'youtube.com' && tabId && url.includes('/watch')) {
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const m = document.querySelector('meta[itemprop="genre"]');
+          return m ? m.content : null;
+        }
+      });
+      if (results && results[0] && results[0].result) {
+        domain = `youtube.com (${results[0].result})`;
+      }
+    } catch(e) {}
+  }
+
+  await chrome.storage.local.set({ _activeTab: { url, tabId, domain }, _startTime: Date.now() });
+  updateActionBadge(domain);
+  return domain;
 }
 
 async function transition(newUrl, newTabId) {
   await checkAndResetIfNewDay();
   const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
 
-  const fromDomain = _activeTab ? extractDomain(_activeTab.url) : null;
-  const toDomain = extractDomain(newUrl);
+  const fromDomain = _activeTab ? (_activeTab.domain || extractDomain(_activeTab.url)) : null;
+  
+  if (_activeTab && _startTime) await flushTime(_activeTab, _startTime);
 
-  if (_activeTab && _startTime) await flushTime(_activeTab.url, _startTime);
+  const toDomain = await startTracking(newUrl || '', newTabId || null);
 
   if (fromDomain && toDomain) {
     await logTransition(fromDomain, toDomain);
   }
-
-  await startTracking(newUrl || '', newTabId || null);
 
   // Check for rabbit hole intervention
   if (toDomain && newTabId) {
@@ -253,7 +294,7 @@ async function transition(newUrl, newTabId) {
 
 async function pauseTracking() {
   const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
-  if (_activeTab && _startTime) await flushTime(_activeTab.url, _startTime);
+  if (_activeTab && _startTime) await flushTime(_activeTab, _startTime);
   await chrome.storage.local.remove(['_activeTab', '_startTime']);
 }
 
@@ -270,11 +311,11 @@ async function resumeFromActiveTab() {
 async function heartbeatFlush() {
   const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
   if (!_activeTab || !_startTime) return;
-  await flushTime(_activeTab.url, _startTime);
+  await flushTime(_activeTab, _startTime);
   await chrome.storage.local.set({ _startTime: Date.now() });
 
   // Evaluate rabbit hole threshold while the user is actively sitting on this tab
-  const domain = extractDomain(_activeTab.url);
+  const domain = _activeTab.domain || extractDomain(_activeTab.url);
   if (domain && _activeTab.tabId) {
     await checkRabbitHole(null, domain, _activeTab.tabId);
   }
@@ -348,6 +389,77 @@ async function checkRabbitHole(fromDomain, toDomain, tabId) {
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ['intervene.js'],
+    });
+
+    // Inject CSS safely to bypass CSP restrictions on inline <style>
+    await chrome.scripting.insertCSS({
+      target: { tabId },
+      css: `
+        #doomtab-intervention-overlay {
+          position: fixed; inset: 0; z-index: 2147483647;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,.7) !important;
+          backdrop-filter: blur(8px) !important;
+          -webkit-backdrop-filter: blur(8px);
+          animation: doomtab-fadein .3s ease;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+        @keyframes doomtab-fadein { from { opacity: 0; } to { opacity: 1; } }
+        .doomtab-card {
+          background: #0d0d12 !important;
+          border: 1px solid rgba(232,64,96,.3) !important;
+          border-radius: 16px !important;
+          padding: 32px 28px !important;
+          max-width: 380px !important; width: 90% !important;
+          text-align: center !important;
+          box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 40px rgba(232,64,96,.1) !important;
+          animation: doomtab-slidein .3s ease;
+        }
+        @keyframes doomtab-slidein {
+          from { transform: scale(.9) translateY(20px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .doomtab-icon {
+          font-size: 48px !important; margin-bottom: 12px !important;
+          animation: doomtab-pulse 2s infinite;
+        }
+        @keyframes doomtab-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        .doomtab-title {
+          font-size: 20px !important; font-weight: 800 !important; color: #e84060 !important;
+          margin-bottom: 12px !important; letter-spacing: -.02em !important;
+        }
+        .doomtab-message {
+          font-size: 14px !important; color: #b0b0cc !important; line-height: 1.6 !important;
+          margin-bottom: 16px !important;
+        }
+        .doomtab-message strong { color: #ecedf0 !important; font-weight: 700 !important; }
+        .doomtab-badge {
+          display: inline-block !important;
+          background: rgba(232,64,96,.1) !important;
+          border: 1px solid rgba(232,64,96,.2) !important;
+          border-radius: 20px !important;
+          padding: 6px 14px !important;
+          font-size: 12px !important; font-weight: 700 !important; color: #e84060 !important;
+          margin-bottom: 20px !important;
+        }
+        .doomtab-buttons { display: flex !important; gap: 8px !important; }
+        .doomtab-btn {
+          flex: 1 !important; padding: 10px 8px !important;
+          border-radius: 8px !important; border: 1px solid #2a2a42 !important;
+          font-size: 13px !important; font-weight: 700 !important;
+          cursor: pointer !important; transition: all .15s !important;
+          font-family: inherit !important;
+        }
+        .doomtab-btn-continue { background: rgba(232,192,64,.08) !important; color: #e8c040 !important; border-color: rgba(232,192,64,.3) !important; }
+        .doomtab-btn-continue:hover { background: rgba(232,192,64,.15) !important; }
+        .doomtab-btn-close { background: rgba(232,64,96,.1) !important; color: #e84060 !important; border-color: rgba(232,64,96,.3) !important; }
+        .doomtab-btn-close:hover { background: rgba(232,64,96,.2) !important; }
+        .doomtab-btn-later { background: rgba(80,80,104,.15) !important; color: #8888a0 !important; border-color: rgba(80,80,104,.3) !important; }
+        .doomtab-btn-later:hover { background: rgba(80,80,104,.25) !important; }
+      `
     });
 
     // Small delay to let script initialize
@@ -438,7 +550,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
   if (alarm.name === 'dailyReset') {
     const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
-    if (_activeTab && _startTime) await flushTime(_activeTab.url, _startTime);
+    if (_activeTab && _startTime) await flushTime(_activeTab, _startTime);
     const { _currentDate } = await chrome.storage.local.get('_currentDate');
     if (_currentDate) await performDailyReset(_currentDate);
     if (_activeTab) await startTracking(_activeTab.url, _activeTab.tabId);

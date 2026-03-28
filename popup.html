@@ -164,12 +164,22 @@
       display: flex; align-items: center; gap: 6px;
     }
     .header-dot {
-      width: 5px; height: 5px; border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: #7c6af7;
       box-shadow: 0 0 6px #7c6af7;
       animation: pulse 2.5s ease-in-out infinite;
     }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* Active tracking state — triggered via JS when _activeTab exists */
+    .header-dot.tracking {
+      animation: tracking-glow 1.8s ease-in-out infinite;
+    }
+    @keyframes tracking-glow {
+      0%   { box-shadow: 0 0 4px #7c6af7, 0 0 0px rgba(124,106,247,0); transform: scale(1); }
+      50%  { box-shadow: 0 0 10px #7c6af7, 0 0 18px rgba(124,106,247,.35); transform: scale(1.25); }
+      100% { box-shadow: 0 0 4px #7c6af7, 0 0 0px rgba(124,106,247,0); transform: scale(1); }
+    }
     .header-brand-text {
       font-size: 10px; font-weight: 800;
       letter-spacing: .12em; text-transform: uppercase;
@@ -202,18 +212,27 @@
     #score-canvas { display: block; }
 
     .score-breakdown {
-      display: flex; gap: 16px;
+      display: flex; gap: 12px;
       justify-content: center;
+      align-items: center;
     }
     .score-stat {
-      display: flex; align-items: center; gap: 5px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       font-size: 11px; font-weight: 600;
     }
-    .score-stat-dot {
-      width: 6px; height: 6px; border-radius: 50%;
+    .score-stat-top {
+      display: flex; align-items: center; gap: 4px;
     }
-    .score-stat-label { color: #6868a0; }
-    .score-stat-value { color: #ecedf0; }
+    .score-stat-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .score-stat-label { color: #6868a0; white-space: nowrap; }
+    .score-stat-value {
+      color: #ecedf0;
+      font-size: 12px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
 
     /* ── Tabs ── */
     .tabs {
@@ -637,7 +656,7 @@
     .empty-icon { font-size: 28px; display: block; margin-bottom: 10px; opacity: .3; }
     .empty-text { font-size: 12px; color: #505068; line-height: 1.6; }
 
-    /* ── Doom/Good Toggle ── */
+    /* ── Doom/Flow Toggle ── */
     .today-toggle {
       display: flex; gap: 6px;
       padding: 10px 18px 6px;
@@ -1107,55 +1126,12 @@
   <div class="onboarding" id="onboarding">
     <div class="onb-brand">DoomTab</div>
 
-    <!-- Step 1: Name -->
+    <!-- Name only -->
     <div class="onb-step active" id="onb-step-name">
       <div class="onb-title serif">What should we call you?</div>
-      <div class="onb-subtitle">Just your first name — we'll use it to greet you.</div>
+      <div class="onb-subtitle">Just your first name — we'll use it to personalize your experience.</div>
       <input type="text" class="onb-input" id="onb-name-input" placeholder="Your name" maxlength="20" autocomplete="off" />
-      <button class="onb-continue" id="onb-name-btn" disabled>Continue</button>
-    </div>
-
-    <!-- Step 2: Role -->
-    <div class="onb-step" id="onb-step-role">
-      <div class="onb-title serif">What's your field?</div>
-      <div class="onb-subtitle">We'll auto-score your focus based on your profession. Social media &amp; entertainment always count as distractions.</div>
-      <div class="role-grid" id="role-grid">
-        <button class="role-btn" data-role="developer">
-          <span class="role-emoji">💻</span>
-          <div class="role-info">
-            <span class="role-name">Developer</span>
-            <span class="role-desc">Code, design, deploy</span>
-          </div>
-        </button>
-        <button class="role-btn" data-role="student">
-          <span class="role-emoji">📚</span>
-          <div class="role-info">
-            <span class="role-name">Student</span>
-            <span class="role-desc">Study, research, learn</span>
-          </div>
-        </button>
-        <button class="role-btn" data-role="medical">
-          <span class="role-emoji">🏥</span>
-          <div class="role-info">
-            <span class="role-name">Medical</span>
-            <span class="role-desc">Research, clinical, care</span>
-          </div>
-        </button>
-        <button class="role-btn" data-role="journalist">
-          <span class="role-emoji">📰</span>
-          <div class="role-info">
-            <span class="role-name">Journalist</span>
-            <span class="role-desc">Write, research, publish</span>
-          </div>
-        </button>
-        <button class="role-btn" data-role="other">
-          <span class="role-emoji">🎯</span>
-          <div class="role-info">
-            <span class="role-name">Other</span>
-            <span class="role-desc">General productivity</span>
-          </div>
-        </button>
-      </div>
+      <button class="onb-continue" id="onb-name-btn" disabled>Let's go →</button>
     </div>
   </div>
 
@@ -1202,8 +1178,8 @@
           <span class="toggle-time">—</span>
         </button>
         <button class="toggle-btn good" id="toggle-good">
-          <span class="toggle-icon">✨</span>
-          <span class="toggle-label">Good</span>
+          <span class="toggle-icon">🌊</span>
+          <span class="toggle-label">Flow</span>
           <span class="toggle-time">—</span>
         </button>
       </div>
@@ -1280,7 +1256,7 @@
         </div>
         <div class="streak-calendar" id="streak-calendar"></div>
         <div class="streak-info">
-          <div class="streak-info-badge"><div class="streak-info-dot" style="background:#56c9a0"></div> Good</div>
+          <div class="streak-info-badge"><div class="streak-info-dot" style="background:#56c9a0"></div> Flow</div>
           <div class="streak-info-badge"><div class="streak-info-dot" style="background:#e84060"></div> Bad</div>
           <div class="streak-info-badge"><div class="streak-info-dot" style="background:#2a2a42"></div> No data</div>
         </div>

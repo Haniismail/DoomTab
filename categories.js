@@ -310,6 +310,29 @@ const DISTRACTION_CATEGORIES = ['Social Media', 'Entertainment', 'Shopping', 'Ga
 function categorize(domain) {
   if (!domain) return 'Uncategorized';
 
+  // Handle YouTube genres specially
+  if (domain.startsWith('youtube.com (')) {
+    const genre = domain.slice(13, -1);
+    
+    // Map YouTube API genres to DoomTab categories
+    const genreMap = {
+      'Music': 'Music',
+      'Gaming': 'Gaming',
+      'Entertainment': 'Entertainment',
+      'Comedy': 'Entertainment',
+      'Film & Animation': 'Entertainment',
+      'Sports': 'Sports & Fantasy',
+      'Education': 'Education',
+      'Science & Technology': 'Education',
+      'Howto & Style': 'Education',
+      'News & Politics': 'News',
+      'People & Blogs': 'Social Media',
+    };
+    
+    if (genreMap[genre]) return genreMap[genre];
+    return 'Entertainment'; // Fallback for unknown youtube genres
+  }
+
   // 1. Exact match
   if (SITE_DB.has(domain)) return SITE_DB.get(domain);
 
@@ -337,24 +360,25 @@ function computeFocusBreakdown(entries, role) {
 
   const productiveCats = new Set(ROLE_PRODUCTIVE[role] || ROLE_PRODUCTIVE.other);
 
-  for (const [domain, sec] of entries) {
-    const cat = categorize(domain);
+  for (const [rawDomain, sec] of entries) {
+    const cat = categorize(rawDomain);
+    const domain = rawDomain.split(' (')[0]; // Simplify for the arrays
 
     if (NEUTRAL_CATEGORIES.has(cat)) {
       neutral.seconds += sec;
-      neutral.domains.push(domain);
+      if (!neutral.domains.includes(domain)) neutral.domains.push(domain);
     } else if (DISTRACTION_CATEGORIES.includes(cat)) {
       distraction.seconds += sec;
-      distraction.domains.push(domain);
+      if (!distraction.domains.includes(domain)) distraction.domains.push(domain);
     } else if (productiveCats.has(cat)) {
       productive.seconds += sec;
-      productive.domains.push(domain);
+      if (!productive.domains.includes(domain)) productive.domains.push(domain);
     } else if (cat === 'Uncategorized') {
       neutral.seconds += sec;
-      neutral.domains.push(domain);
+      if (!neutral.domains.includes(domain)) neutral.domains.push(domain);
     } else {
       neutral.seconds += sec;
-      neutral.domains.push(domain);
+      if (!neutral.domains.includes(domain)) neutral.domains.push(domain);
     }
   }
 
@@ -368,11 +392,20 @@ function computeFocusBreakdown(entries, role) {
 
 function groupByCategory(entries) {
   const groups = {};
-  for (const [domain, sec] of entries) {
-    const cat = categorize(domain);
+  for (const [rawDomain, sec] of entries) {
+    const cat = categorize(rawDomain);
+    const domain = rawDomain.split(' (')[0]; // Strip the genre for display
+
     if (!groups[cat]) groups[cat] = { total: 0, domains: [] };
     groups[cat].total += sec;
-    groups[cat].domains.push({ domain, sec });
+    
+    // Merge repetitive domains in the same category
+    const existing = groups[cat].domains.find(d => d.domain === domain);
+    if (existing) {
+      existing.sec += sec;
+    } else {
+      groups[cat].domains.push({ domain, sec });
+    }
   }
 
   for (const g of Object.values(groups)) {

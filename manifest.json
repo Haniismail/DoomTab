@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DoomTab",
-  "version": "1.2",
+  "version": "1.3",
   "description": "See where your time actually goes. Track every domain, score your focus, escape rabbit holes.",
   "permissions": ["tabs", "storage", "activeTab", "alarms", "scripting", "notifications"],
   "host_permissions": ["<all_urls>"],

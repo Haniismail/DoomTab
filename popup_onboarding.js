@@ -2,6 +2,8 @@
 
 // ─── Greeting ─────────────────────────────────────────────────────────────────
 
+let greetingInterval;
+
 function renderGreeting() {
   const el = document.getElementById('header-greeting');
   if (!el) return;
@@ -24,7 +26,30 @@ function renderGreeting() {
   else                               bank = greetings.night;
 
   const phrase = bank[Math.floor(Math.random() * bank.length)];
-  el.textContent = name ? `${phrase}, ${name}.` : `${phrase}.`;
+  const fullText = name ? `${phrase}, ${name}.` : `${phrase}.`;
+
+  if (greetingInterval) clearInterval(greetingInterval);
+  el.textContent = '';
+  let i = 0;
+  greetingInterval = setInterval(() => {
+    if (i < fullText.length) {
+      el.textContent += fullText.charAt(i);
+      i++;
+    } else {
+      clearInterval(greetingInterval);
+      greetingInterval = null;
+    }
+  }, 40);
+}
+
+// ─── Tracking Dot ─────────────────────────────────────────────────────────────
+// Pulses the header dot with a vivid glow when the extension is actively tracking
+
+async function updateTrackingDot() {
+  const dot = document.querySelector('.header-dot');
+  if (!dot) return;
+  const { _activeTab } = await chrome.storage.local.get('_activeTab');
+  dot.classList.toggle('tracking', !!_activeTab);
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -33,18 +58,18 @@ function initOnboarding() {
   const onb  = document.getElementById('onboarding');
   const main = document.getElementById('main-ui');
 
+  // Already set up — go straight to main UI
   if (userRole) {
     onb.classList.add('hidden');
     main.classList.add('visible');
     renderGreeting();
+    updateTrackingDot();
     return;
   }
 
-  // ── Step 1: Name ──
+  // ── Name step ──
   const nameInput = document.getElementById('onb-name-input');
   const nameBtn   = document.getElementById('onb-name-btn');
-  const stepName  = document.getElementById('onb-step-name');
-  const stepRole  = document.getElementById('onb-step-role');
 
   nameInput.addEventListener('input', () => {
     nameBtn.disabled = nameInput.value.trim().length === 0;
@@ -53,34 +78,26 @@ function initOnboarding() {
     if (e.key === 'Enter' && nameInput.value.trim().length > 0) nameBtn.click();
   });
 
-  nameBtn.addEventListener('click', () => {
+  nameBtn.addEventListener('click', async () => {
     const name = nameInput.value.trim();
     if (!name) return;
+
     userName = name;
-    // Animate transition between steps
-    stepName.classList.remove('active');
-    stepRole.classList.add('active');
-  });
+    userRole = 'other'; // default role — user can change via settings
 
-  // ── Step 2: Role ──
-  document.getElementById('role-grid').addEventListener('click', async (e) => {
-    const btn = e.target.closest('.role-btn');
-    if (!btn) return;
-
-    const role = btn.dataset.role;
-    await chrome.storage.local.set({ _userRole: role, _userName: userName || '' });
-    userRole = role;
+    await chrome.storage.local.set({ _userRole: 'other', _userName: name });
 
     onb.classList.add('hidden');
     main.classList.add('visible', 'fade-in');
     renderGreeting();
+    updateTrackingDot();
 
     const entries = todayEntries(storage);
     renderAll(entries);
   });
 }
 
-// ─── Settings (change role) ───────────────────────────────────────────────────
+// ─── Settings (reset name) ────────────────────────────────────────────────────
 
 function initSettings() {
   document.getElementById('settings-btn').addEventListener('click', async () => {
@@ -90,17 +107,12 @@ function initSettings() {
 
     const onb  = document.getElementById('onboarding');
     const main = document.getElementById('main-ui');
-    const stepName = document.getElementById('onb-step-name');
-    const stepRole = document.getElementById('onb-step-role');
+    const nameInput = document.getElementById('onb-name-input');
 
-    // Reset onboarding to step 1
-    stepRole.classList.remove('active');
-    stepName.classList.add('active');
-    document.getElementById('onb-name-input').value = '';
+    nameInput.value = '';
     document.getElementById('onb-name-btn').disabled = true;
 
     main.classList.remove('visible');
     onb.classList.remove('hidden');
   });
 }
-

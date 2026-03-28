@@ -81,6 +81,9 @@ function renderScoreBreakdown(breakdown) {
     const stat = document.createElement('div');
     stat.className = 'score-stat';
 
+    const top = document.createElement('div');
+    top.className = 'score-stat-top';
+
     const dot = document.createElement('span');
     dot.className = 'score-stat-dot';
     dot.style.background = color;
@@ -89,11 +92,13 @@ function renderScoreBreakdown(breakdown) {
     lbl.className = 'score-stat-label';
     lbl.textContent = label;
 
+    top.append(dot, lbl);
+
     const val = document.createElement('span');
     val.className = 'score-stat-value';
     val.textContent = fmt(value);
 
-    stat.append(dot, lbl, val);
+    stat.append(top, val);
     el.appendChild(stat);
   });
 }
@@ -156,7 +161,7 @@ function renderToday(entries) {
     txt.className = 'empty-text';
     txt.textContent = todayView === 'doom'
       ? 'No distractions detected yet.\nKeep it up!'
-      : 'No productive browsing yet.\nTime to get to work!';
+      : 'No flow time yet.\nTime to lock in!';
     div.append(icon, txt);
     container.appendChild(div);
     stat.textContent = `Total: ${fmt(grandTotal)}`;
@@ -232,7 +237,15 @@ function renderToday(entries) {
   });
 
   // ── Top 4 Sites ──
-  const allDomains = displayGroups.flatMap(g => g.domains);
+  const mergedDomains = {};
+  displayGroups.flatMap(g => g.domains).forEach(d => {
+    if (!mergedDomains[d.domain]) {
+      mergedDomains[d.domain] = { domain: d.domain, sec: 0 };
+    }
+    mergedDomains[d.domain].sec += d.sec;
+  });
+  
+  const allDomains = Object.values(mergedDomains);
   allDomains.sort((a, b) => b.sec - a.sec);
   const top = allDomains.slice(0, 4);
 
@@ -283,8 +296,17 @@ function renderInsight(entries, score) {
   const allGroups = groupByCategory(entries);
   const { doom, good } = splitGroups(allGroups, role);
 
-  const doomDomains = doom.flatMap(g => g.domains).sort((a, b) => b.sec - a.sec);
-  const goodDomains = good.flatMap(g => g.domains).sort((a, b) => b.sec - a.sec);
+  const mergeToSortedArray = (groups) => {
+    const map = {};
+    groups.flatMap(g => g.domains).forEach(d => {
+      if (!map[d.domain]) map[d.domain] = { domain: d.domain, sec: 0 };
+      map[d.domain].sec += d.sec;
+    });
+    return Object.values(map).sort((a, b) => b.sec - a.sec);
+  };
+
+  const doomDomains = mergeToSortedArray(doom);
+  const goodDomains = mergeToSortedArray(good);
 
   // Hours left until midnight
   const now = new Date();
