@@ -1,153 +1,217 @@
-🪞 FocusMirror
-<p align="center"> A lightweight Chrome extension that reflects your browsing habits back to you. </p> <p align="center"> Track where your attention goes and take control of your focus. </p> <p align="center">
+<div align="center">
 
+# 💀 DoomTab
 
+**Know where your time actually goes.**
 
+A zero-dependency Chrome extension that tracks your browsing habits, scores your focus, calls out your worst distractions by name — and helps you break free from rabbit holes in real time.
 
+[![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-56c9a0)](.)
+[![License: MIT](https://img.shields.io/badge/License-MIT-7c6af7)](LICENSE)
+[![Privacy](https://img.shields.io/badge/Data-100%25%20Local-e8c040)](.)
 
+</div>
 
+---
 
+## The Problem
 
-</p>
-✨ Overview
+You open your browser to "quickly check something." Two hours later, you're deep in a Reddit thread about whether a hotdog is a sandwich. DoomTab makes that invisible time visible — and actually helps you stop.
 
-FocusMirror helps you understand how you spend your time online.
+## What Makes It Different
 
-Instead of guessing where your attention goes, the extension automatically tracks time spent on each website and displays a simple overview directly in the browser.
+Most time trackers just show you numbers. DoomTab is an **active behavioral engine** — it reads your data in real time and tells you exactly what's going wrong (or right), who's responsible, and how much time you have left to fix it.
 
-The goal is simple:
+---
 
-Make your browsing habits visible so you can improve your focus.
+## ✨ Features
 
-🚀 Features
-⏱ Website Time Tracking
+### 📊 Focus Score & Smart Insights
+A real-time focus score (0–100%) based on your productive vs. distraction time. The insight bar calls out specific sites by name:
+- **Doom View** — *"🔥 reddit.com and youtube.com are dragging you off track"*
+- **Good View** — *"⚡ claude.ai and github.com could pull your score up"*
+- Shows how many hours you have left to save the day
 
-Tracks the time spent on each domain while browsing.
+### 🔥 Duolingo-Style Streaks
+Consecutive days with 60%+ focus score build your streak. A 14-day calendar grid tracks your history. Break the streak? You'll feel it.
+- **Streak Alarm** — 2 hours before midnight, if you're below threshold, you get a notification warning
 
-📊 Ranked Usage Overview
+### 🐇 Anti Rabbit Hole — Real-Time Interventions
+When you spiral from a productive site into a distraction chain, DoomTab intervenes:
+- Fullscreen overlay: *"You've been on reddit.com for 42 minutes"*
+- Three choices: **Continue (5 min)** · **Close Tab** · **Snooze**
+- Configurable sensitivity: Aggressive / Moderate / Chill
+- Powered by the Triggers engine — it knows your patterns
 
-Displays websites ordered by time spent.
+### 🔍 Pattern Detection
+Analyzes your history to surface:
+- **Routines** — sites you visit at the same time every day
+- **Trending** — domains that are eating more of your time this week vs. last
+- **Time-of-day clusters** — when you're most vulnerable
 
-⚡ Lightweight
+### ⚡ Distraction Triggers
+Detects behavioral chains that lead to productivity drops:
+- *"After github.com → youtube.com (5× this week)"*
+- Rapid tab-switching detection
+- Feeds directly into the Anti Rabbit Hole intervention engine
 
-Runs efficiently with minimal resource usage.
+### 🎯 Focus Windows
+Identifies your naturally productive hours via a heatmap:
+- Peak focus hours highlighted
+- Helps you schedule deep work when your data says you're sharpest
 
-🔒 Privacy First
+### 🌗 Adaptive Theming
+Automatically switches between dark and light mode based on your browser/OS preference. Every component — from canvas charts to streak calendars — responds to `prefers-color-scheme`.
 
-No analytics, no external servers, no data collection.
+### 🍩 Interactive Today View
+- **Doom/Good toggle** — split your browsing into productive vs. distraction categories
+- **Collapsible categories** — expand any category to see individual site breakdowns
+- **Top Sites** — the 4 domains consuming the most time in each view
+- **Donut chart** — visual doom-vs-good split at a glance
 
-🧩 Modern Extension Architecture
+---
 
-Built using Chrome Manifest V3.
+## 🖥️ Architecture
 
-🏗 Project Structure
-focusmirror/
-│
-├── manifest.json
-├── background.js
-├── popup.html
-└── popup.js
-manifest.json
+```
+┌─────────────────────────────────────────────────────┐
+│                   background.js                      │
+│  Service Worker — always-on tracking engine           │
+│  • Tab/window focus detection                        │
+│  • Midnight data archival (chrome.alarms)            │
+│  • Streak check alarm (2h before midnight)           │
+│  • Intervention trigger evaluation                   │
+└──────────┬──────────────────────────────┬────────────┘
+           │                              │
+           ▼                              ▼
+┌──────────────────┐          ┌─────────────────────┐
+│    popup.html    │          │    intervene.js      │
+│  popup.js        │          │  Content script      │
+│  categories.js   │          │  Injected on-demand  │
+│  analytics.js    │          │  via chrome.scripting │
+│                  │          │                       │
+│  • Score Ring    │          │  • Fullscreen overlay │
+│  • Insight Bar   │          │  • Continue / Close   │
+│  • Today View    │          │  • Snooze per-domain  │
+│  • Streak Grid   │          └─────────────────────┘
+│  • Patterns      │
+│  • Triggers      │
+│  • Focus Heatmap │
+│  • Rabbit Hole   │
+└──────────────────┘
+```
 
-Defines extension configuration, permissions, and entry points.
+### Data Flow
 
-background.js
+| Layer | Storage Key | Purpose |
+|---|---|---|
+| Live tracking | `domain.com` | Seconds spent today per domain |
+| Daily archive | `_day_2026-03-28` | Full snapshot archived at midnight |
+| Streak data | `_streak`, `_streakBest` | Current + best streak counts |
+| Settings | `_userRole`, `_focusSites` | User preferences |
+| Interventions | `_rabbitHole`, `_rabbitSnooze` | Intervention config + snooze state |
+| Analytics | `_interventionLog` | Recent intervention events |
 
-Handles:
+---
 
-tab activity detection
-time tracking
-domain extraction
-data storage
-popup.html
+## 🚀 Install
 
-The extension popup interface.
+### From Source (Developer Mode)
 
-popup.js
+```bash
+git clone https://github.com/YOUR_USERNAME/DoomTab.git
+```
 
-Loads stored browsing data and displays it to the user.
+1. Open `chrome://extensions` in Chrome
+2. Enable **Developer Mode** (top-right toggle)
+3. Click **Load Unpacked** → select the cloned folder
+4. Pin 💀 **DoomTab** from the extensions puzzle icon
 
-⚙️ How It Works
+### First Launch
+On first open, you'll pick your role (Developer, Student, Designer, etc.) — this tells DoomTab how to categorize sites as productive vs. distracting for your specific workflow.
 
-1️⃣ Detect the active browser tab.
+---
 
-2️⃣ Record the timestamp.
+## 🛠️ Tech Stack
 
-3️⃣ When the tab changes, calculate the time spent.
+| | |
+|---|---|
+| **Runtime** | Chrome Extension Manifest V3 |
+| **Tracking** | Service Worker + `chrome.tabs` / `chrome.windows` events |
+| **Storage** | `chrome.storage.local` (100% on-device) |
+| **Interventions** | `chrome.scripting.executeScript` (on-demand injection) |
+| **Notifications** | `chrome.notifications` (streak warnings) |
+| **Alarms** | `chrome.alarms` (midnight reset, streak check) |
+| **UI** | Vanilla JS + HTML Canvas (score ring, donut chart) |
+| **Styling** | CSS custom properties with `prefers-color-scheme` |
+| **Dependencies** | **Zero.** No frameworks, no bundlers, no build step. |
 
-4️⃣ Extract the domain name.
+---
 
-5️⃣ Store aggregated time per domain using:
+## 🔒 Privacy
 
-chrome.storage.local
+**All data stays on your device. Period.**
 
-6️⃣ Display results inside the extension popup.
+- No analytics, no telemetry, no external requests
+- No accounts, no sign-ups, no cloud sync
+- No tracking pixels, no fingerprinting
+- `host_permissions` is used exclusively for the intervention overlay injection
+- You can verify this: the extension makes zero network calls
 
-🧪 Example Output
-youtube.com      1h 23m
-twitter.com      48m
-github.com       32m
-stackoverflow.com 15m
-🛠 Tech Stack
-JavaScript
-Chrome Extensions API
-Manifest V3
-HTML
-CSS
-🔐 Privacy
+---
 
-FocusMirror is designed to be privacy-first.
+## 📁 File Map
 
-All data:
+```
+DoomTab/
+├── manifest.json      # Extension config (MV3)
+├── background.js      # Service worker — tracking, alarms, interventions
+├── popup.html         # UI markup + full CSS (incl. light/dark themes)
+├── popup.js           # All rendering logic — score, today, charts, streaks
+├── categories.js      # Site categorization engine + focus scoring
+├── analytics.js       # Pattern detection, trigger analysis, focus heatmap
+├── intervene.js       # Content script — rabbit hole overlay
+└── icons/             # Extension icons (16, 48, 128)
+```
 
-stays on your device
-is stored locally
-is never sent to external servers
+---
 
-No accounts required.
+## 🗺️ Roadmap
 
-🚀 Installation
-Clone the repository
-git clone https://github.com/YOUR_USERNAME/focusmirror.git
-Load the extension
-Open Chrome
-Navigate to:
-chrome://extensions
-Enable Developer Mode
-Click Load unpacked
-Select the project folder
+- [ ] Chrome Web Store publication
+- [ ] Weekly/monthly summary reports
+- [ ] Custom category overrides (move a site between doom/good)
+- [ ] Focus mode scheduling (auto-block doom sites during set hours)
+- [ ] Data export (full history JSON/CSV)
+- [ ] Firefox & Edge support
 
-The extension will now appear in your toolbar.
+See [Issues](../../issues) for feature requests and bugs.
 
-🛣 Roadmap
+---
 
-Future improvements may include:
+## 🤝 Contributing
 
-Daily usage summaries
-Weekly productivity reports
-Focus score
-Visual charts
-Export browsing statistics
-Optional cloud sync
-🤝 Contributing
+Contributions welcome. The codebase is intentionally framework-free — please keep it that way.
 
-Contributions are welcome.
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/your-thing`)
+3. Commit your changes (`git commit -m 'Add your-thing'`)
+4. Push to the branch (`git push origin feature/your-thing`)
+5. Open a Pull Request
 
-Feel free to open:
+---
 
-Issues
-Feature requests
-Pull requests
-📜 License
+## 📄 License
 
-MIT License
+[MIT](LICENSE) — do whatever you want with it.
 
-🧠 Philosophy
+---
 
-Awareness creates control.
+<div align="center">
 
-FocusMirror doesn't block websites.
+**Built with spite for doomscrolling and love for deep work.**
 
-It simply shows you the mirror.
+💀
 
-⭐ If you find this project useful, consider starring the repository.
+</div>
