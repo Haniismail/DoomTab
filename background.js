@@ -272,6 +272,12 @@ async function heartbeatFlush() {
   if (!_activeTab || !_startTime) return;
   await flushTime(_activeTab.url, _startTime);
   await chrome.storage.local.set({ _startTime: Date.now() });
+
+  // Evaluate rabbit hole threshold while the user is actively sitting on this tab
+  const domain = extractDomain(_activeTab.url);
+  if (domain && _activeTab.tabId) {
+    await checkRabbitHole(null, domain, _activeTab.tabId);
+  }
 }
 
 // ─── Rabbit Hole Detection ───────────────────────────────────────────────────
