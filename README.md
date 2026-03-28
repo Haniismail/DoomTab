@@ -44,22 +44,23 @@ When you spiral from a productive site into a distraction chain, DoomTab interve
 - Configurable sensitivity: Aggressive / Moderate / Chill
 - Powered by the Triggers engine — it knows your patterns
 
-### 🔍 Pattern Detection
-Analyzes your history to surface:
-- **Routines** — sites you visit at the same time every day
-- **Trending** — domains that are eating more of your time this week vs. last
-- **Time-of-day clusters** — when you're most vulnerable
+### 🔍 1. Patterns (The "When" & "How")
+*Coming soon: Maps out your habits over time to find the rhythm of your distractions.*
+- **The Danger Zone Heatmap:** A visual calendar showing exactly what time of day your focus crashes. *(e.g. "Your focus score drops by 40% every day between 2:00 PM and 4:00 PM. This is your Danger Zone.")*
+- **The Weekend Bleed:** Tracks if bad habits are spilling over. *(e.g. "You've been bringing your Sunday doom-scrolling habits into Monday mornings.")*
+- **Doom-Scrolling Velocity:** Logs how aggressively you jump between sites. *(e.g. "You opened 15 different Reddit tabs in 10 minutes.")*
 
-### ⚡ Distraction Triggers
-Detects behavioral chains that lead to productivity drops:
-- *"After github.com → youtube.com (5× this week)"*
-- Rapid tab-switching detection
-- Feeds directly into the Anti Rabbit Hole intervention engine
+### ⚡ 2. Triggers (The "Why")
+*Coming soon: Maps out the "gateway" sites that cause you to spiral into distraction.*
+- **The Gateway Flowchart:** Shows you exactly which website started the distraction chain. *(e.g. "⚠️ Gateway Alert: 80% of the time you visit gmail.com, you end up on youtube.com within 3 minutes.")*
+- **Habit Loops:** Identifies repetitive behavior. *(e.g. "You have a habit loop: github.com ➔ news.ycombinator.com ➔ twitter.com. Breaking the link after Hacker News saves you 45 minutes on average.")*
+- **Bounce Rate Analysis:** Measures micro-distractions. *(e.g. "You check instagram.com for 30 seconds exactly every 15 minutes.")*
 
-### 🎯 Focus Windows
-Identifies your naturally productive hours via a heatmap:
-- Peak focus hours highlighted
-- Helps you schedule deep work when your data says you're sharpest
+### 🎯 3. Focus (The "What Works")
+*Coming soon: Analyzes your peak productivity states to tell you how to replicate your best days.*
+- **Productivity Anchors:** Discovers the starting points for your best days. *(e.g. "✨ Anchor Found: On days when your first visit is notion.so, your average daily focus score is 88. Starting here sets you up for success.")*
+- **Deep Work Blocks:** Tracks uninterrupted flow states. *(e.g. "You achieved 2.5 hours of completely uninterrupted deep work today while inside vscode.dev.")*
+- **Streak Analysis:** Correlates your best streaks with specific behaviors. *(e.g. "Your longest streak is 14 days, and all your best streaks happen when you avoid Social Media entirely before 10 AM.")*
 
 ### 🌗 Adaptive Theming
 Automatically switches between dark and light mode based on your browser/OS preference. Every component — from canvas charts to streak calendars — responds to `prefers-color-scheme`.
