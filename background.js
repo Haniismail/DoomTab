@@ -325,7 +325,7 @@ async function heartbeatFlush() {
 
 async function getRabbitHoleSettings() {
   const { _rabbitHole } = await chrome.storage.local.get('_rabbitHole');
-  return _rabbitHole || { enabled: false, sensitivity: 'moderate' };
+  return _rabbitHole || { enabled: true, sensitivity: 'moderate' };
 }
 
 async function checkRabbitHole(fromDomain, toDomain, tabId) {

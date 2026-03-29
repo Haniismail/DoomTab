@@ -46,17 +46,17 @@ function _getTodayDomains(allData) {
 function analyzePatterns(allData, role) {
   const archives = _getArchives(allData, 14);
   const todayDomains = _getTodayDomains(allData);
-  const daysOfData = archives.length + (todayDomains.length > 0 ? 1 : 0);
+  const daysOfData = archives.length + 1; // Always count today
 
   const result = {
     daysOfData,
-    minDays: 3,
+    minDays: 2, // 2 instead of 3 to show data sooner
     dailyRegulars: [],
     categoryTrends: [],
     routines: [],
   };
 
-  if (daysOfData < 3) return result;
+  if (daysOfData < 2) return result;
 
   // ── Daily Regulars ──
   // Count how many days each domain appears (last 7 days)
@@ -169,7 +169,7 @@ function analyzePatterns(allData, role) {
 function analyzeTriggers(allData, role) {
   const archives = _getArchives(allData, 7);
   const todayTransitions = allData._transitions || [];
-  const daysOfData = archives.length + (todayTransitions.length > 0 ? 1 : 0);
+  const daysOfData = archives.length + 1; // Always count today
 
   const result = {
     daysOfData,
@@ -189,7 +189,7 @@ function analyzeTriggers(allData, role) {
 
   allTransitions.push(...todayTransitions);
 
-  if (allTransitions.length < 5) return result;
+  if (allTransitions.length < 2) return result;
 
   // ── Exit Triggers ──
   // "You left [productive site] for a distraction N times"
@@ -206,7 +206,7 @@ function analyzeTriggers(allData, role) {
   });
 
   result.exitTriggers = Object.entries(exitCounts)
-    .filter(([, v]) => v.total >= 3) // threshold: 3+ times
+    .filter(([, v]) => v.total >= 1) // threshold: 1+ times
     .map(([domain, data]) => {
       const topTarget = Object.entries(data.targets)
         .sort(([,a],[,b]) => b - a)[0];
@@ -222,7 +222,7 @@ function analyzeTriggers(allData, role) {
     .slice(0, 5);
 
   // ── Doom Spirals ──
-  // Detect chains where distraction → distraction → distraction (3+ in a row)
+  // Detect chains where distraction → distraction (2+ in a row)
   const spirals = [];
   let currentChain = [];
 
@@ -234,7 +234,8 @@ function analyzeTriggers(allData, role) {
       if (currentChain.length === 0) currentChain.push(from);
       currentChain.push(to);
     } else {
-      if (currentChain.length >= 3) {
+      // End of chain
+      if (currentChain.length >= 2) {
         // Deduplicate the chain for display
         const unique = [...new Set(currentChain)];
         spirals.push({ chain: unique, length: currentChain.length, ts });
@@ -243,7 +244,7 @@ function analyzeTriggers(allData, role) {
     }
   });
   // Flush last chain
-  if (currentChain.length >= 3) {
+  if (currentChain.length >= 2) {
     spirals.push({ chain: [...new Set(currentChain)], length: currentChain.length });
   }
 
@@ -269,11 +270,11 @@ function analyzeTriggers(allData, role) {
   });
 
   // ── Rapid Switching ──
-  // Detect bursts: 5+ transitions within 3 minutes
-  if (todayTransitions.length >= 5) {
-    for (let i = 0; i < todayTransitions.length - 4; i++) {
-      const window = todayTransitions.slice(i, i + 5);
-      const span = window[4].ts - window[0].ts;
+  // Detect bursts: 3+ transitions within 3 minutes
+  if (todayTransitions.length >= 3) {
+    for (let i = 0; i < todayTransitions.length - 2; i++) {
+      const window = todayTransitions.slice(i, i + 3);
+      const span = window[2].ts - window[0].ts;
       if (span <= 180000) { // 3 minutes
         const startTime = new Date(window[0].ts);
         // Avoid duplicates (overlapping windows)
@@ -282,7 +283,7 @@ function analyzeTriggers(allData, role) {
           result.rapidSwitching.push({
             startTs: startTime.getTime(),
             time: startTime.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }),
-            count: 5,
+            count: 3,
           });
         }
       }
@@ -302,8 +303,7 @@ function analyzeFocusWindows(allData, role) {
 
   const result = {
     hasData: hasAnyHourly,
-    daysOfData: archives.filter(d => Object.keys(d.hourly).length > 0).length +
-      (Object.keys(todayHourly).length > 0 ? 1 : 0),
+    daysOfData: archives.length + 1, // always count today
     hourlyScores: [],  // 24 entries: { hour, productive, distraction, neutral, score, total }
     peakHours: [],
     slumpHours: [],

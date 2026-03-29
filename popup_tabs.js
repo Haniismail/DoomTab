@@ -429,7 +429,7 @@ function renderFocus() {
 
 async function renderRabbitHole() {
   const { _rabbitHole, _interventionLog } = await chrome.storage.local.get(['_rabbitHole', '_interventionLog']);
-  const rh = _rabbitHole || { enabled: false, sensitivity: 'moderate', stats: { shown: 0, closed: 0, continued: 0, snoozed: 0 } };
+  const rh = _rabbitHole || { enabled: true, sensitivity: 'moderate', stats: { shown: 0, closed: 0, continued: 0, snoozed: 0 } };
   const log = Array.isArray(_interventionLog) ? _interventionLog : [];
 
   // Toggle
