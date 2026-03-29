@@ -4,7 +4,7 @@
 
 let greetingInterval;
 
-function renderGreeting() {
+function renderGreeting(animate = false) {
   const el = document.getElementById('header-greeting');
   if (!el) return;
   const name = userName ? userName.split(' ')[0] : null;
@@ -30,16 +30,21 @@ function renderGreeting() {
 
   if (greetingInterval) clearInterval(greetingInterval);
   el.textContent = '';
-  let i = 0;
-  greetingInterval = setInterval(() => {
-    if (i < fullText.length) {
-      el.textContent += fullText.charAt(i);
-      i++;
-    } else {
-      clearInterval(greetingInterval);
-      greetingInterval = null;
-    }
-  }, 40);
+  
+  if (animate) {
+    let i = 0;
+    greetingInterval = setInterval(() => {
+      if (i < fullText.length) {
+        el.textContent += fullText.charAt(i);
+        i++;
+      } else {
+        clearInterval(greetingInterval);
+        greetingInterval = null;
+      }
+    }, 40);
+  } else {
+    el.textContent = fullText;
+  }
 }
 
 // ─── Tracking Dot ─────────────────────────────────────────────────────────────
@@ -89,7 +94,7 @@ function initOnboarding() {
 
     onb.classList.add('hidden');
     main.classList.add('visible', 'fade-in');
-    renderGreeting();
+    renderGreeting(true);
     updateTrackingDot();
 
     const entries = dateEntries(storage, window.currentDayOffset || 0);
