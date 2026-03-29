@@ -201,6 +201,22 @@
     }
     .settings-btn:hover { color: #7c6af7; background: rgba(124,106,247,.08); }
 
+    /* ── Date Navigator ── */
+    .date-navigator {
+      display: flex; justify-content: center; align-items: center; gap: 16px;
+      padding: 0 0 10px; margin-top: -4px;
+    }
+    .date-nav-btn {
+      background: none; border: none; cursor: pointer; color: #7c6af7;
+      font-size: 14px; font-weight: 900; opacity: 0.8; transition: opacity .2s; padding: 4px;
+    }
+    .date-nav-btn:hover:not(:disabled) { opacity: 1; }
+    .date-nav-btn:disabled { color: #404060; cursor: default; opacity: 0.5; }
+    .date-nav-label {
+      font-size: 11px; font-weight: 800; color: #ecedf0;
+      text-transform: uppercase; letter-spacing: .06em; min-width: 80px; text-align: center;
+    }
+
     /* ── Focus Score Hero ── */
     .focus-hero {
       display: flex; flex-direction: column;
@@ -991,6 +1007,10 @@
       .toggle-btn.doom .toggle-label, .toggle-btn.doom .toggle-time { color: var(--doom); }
       .toggle-btn.good .toggle-label, .toggle-btn.good .toggle-time { color: var(--good); }
 
+      /* Date Navigator */
+      .date-nav-label { color: var(--text-primary); }
+      .date-nav-btn:disabled { color: var(--text-muted); }
+
       /* Insight Bar */
       .insight-bar { border-color: var(--border); background: var(--bg-secondary); }
       .insight-bar.warn { border-color: rgba(214,48,80,.2); background: rgba(214,48,80,.04); }
@@ -1148,6 +1168,13 @@
         <div class="header-greeting serif" id="header-greeting"></div>
       </div>
       <button class="settings-btn" id="settings-btn" title="Settings">⚙</button>
+    </div>
+
+    <!-- Date Navigator -->
+    <div class="date-navigator" id="date-navigator">
+      <button class="date-nav-btn" id="date-prev">←</button>
+      <span class="date-nav-label" id="date-label">Today</span>
+      <button class="date-nav-btn" id="date-next" disabled>→</button>
     </div>
 
     <!-- Focus Score Hero -->

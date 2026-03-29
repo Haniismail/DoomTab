@@ -54,7 +54,12 @@ function renderCollecting(container, icon, days, minDays, titleText, message) {
 
   const progress = document.createElement('div');
   progress.className = 'collecting-sub';
-  progress.textContent = `${days} of ${minDays} days collected`;
+  
+  if (days >= minDays) {
+    progress.textContent = `Gathering more usage data...`;
+  } else {
+    progress.textContent = `${days} of ${minDays} days collected`;
+  }
 
   wrap.append(ic, title, sub, bar, progress);
   container.appendChild(wrap);

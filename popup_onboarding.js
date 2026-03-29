@@ -92,7 +92,7 @@ function initOnboarding() {
     renderGreeting();
     updateTrackingDot();
 
-    const entries = todayEntries(storage);
+    const entries = dateEntries(storage, window.currentDayOffset || 0);
     renderAll(entries);
   });
 }

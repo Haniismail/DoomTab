@@ -34,9 +34,19 @@ function getMondayUTC(date) {
   return d;
 }
 
-function todayEntries(allData) {
-  return Object.entries(allData)
-    .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && v >= MIN_SECONDS)
-    .sort(([,a],[,b]) => b - a);
+function dateEntries(allData, offsetDays = 0) {
+  if (offsetDays === 0) {
+    return Object.entries(allData)
+      .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && v >= MIN_SECONDS)
+      .sort(([,a],[,b]) => b - a);
+  } else {
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    const key = `_day_${d.toISOString().slice(0, 10)}`;
+    const archive = allData[key];
+    if (!archive) return [];
+    return Object.entries(archive)
+      .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && v >= MIN_SECONDS)
+      .sort(([,a],[,b]) => b - a);
+  }
 }
-

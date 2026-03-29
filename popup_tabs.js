@@ -139,7 +139,7 @@ function renderPatterns() {
   }
 
   if (container.children.length === 0) {
-    renderCollecting(container, '📊', data.daysOfData, 5, 'Waiting for deeper patterns...',
+    renderCollecting(container, '📊', data.daysOfData, (data.minDays || 1), 'Waiting for deeper patterns...',
       'Keep browsing naturally to unlock your Danger Zone Heatmap and Doom-Scrolling Velocity.');
   }
 }
@@ -291,7 +291,7 @@ function renderFocus() {
   container.innerHTML = '';
 
   if (!data.hasData) {
-    renderCollecting(container, '🎯', 0, 1, 'Finding Your Focus...',
+    renderCollecting(container, '🎯', data.daysOfData, 1, 'Finding Your Focus...',
       "We're looking for your Productivity Anchors and Deep Work Blocks to show you how to replicate your best days.");
     return;
   }
