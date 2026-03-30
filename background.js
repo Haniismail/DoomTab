@@ -49,6 +49,60 @@ function fmtBg(sec) {
   return `${h}h ${m % 60}m`;
 }
 
+// ─── YouTube Classification ───────────────────────────────────────────────────
+
+// Keywords that indicate productive content
+const PRODUCTIVE_KEYWORDS = [
+  'tutorial', 'course', 'lecture', 'lesson', 'learn', 'how to', 'guide',
+  'explained', 'introduction', 'basics', 'fundamentals', 'crash course',
+  'conference', 'talk', 'keynote', 'workshop', 'masterclass',
+  'documentation', 'walkthrough', 'deep dive', 'analysis',
+  'coding', 'programming', 'development', 'devops', 'algorithm',
+];
+
+// Keywords that indicate doom content
+const DOOM_KEYWORDS = [
+  'vlog', 'meme', 'funny', 'fail', 'prank', 'reaction', 'roast',
+  'drama', 'exposed', 'rant', 'compilation', 'shorts', 'challenge',
+  'mukbang', 'asmr', 'unboxing haul', 'day in my life',
+];
+
+// Channels known to be productive (lowercase)
+const PRODUCTIVE_CHANNELS = [
+  '3blue1brown', 'veritasium', 'numberphile', 'computerphile',
+  'traversy media', 'fireship', 'the coding train', 'cs dojo',
+  'tech with tim', 'corey schafer', 'sentdex', 'two minute papers',
+  'mit opencourseware', 'stanford', 'khan academy', 'freecodecamp',
+  'lex fridman', 'huberman lab', 'kurzgesagt', 'vsauce', 'smarter every day',
+  'tom scott', 'wendover productions', 'real engineering', 'practical engineering',
+];
+
+function classifyYouTubeContent(title, channel) {
+  // Check channel allowlist first (highest priority)
+  for (const prodChannel of PRODUCTIVE_CHANNELS) {
+    if (channel.includes(prodChannel)) {
+      return 'Education';
+    }
+  }
+
+  // Check for productive keywords in title
+  for (const kw of PRODUCTIVE_KEYWORDS) {
+    if (title.includes(kw)) {
+      return 'Science & Technology';
+    }
+  }
+
+  // Check for doom keywords in title
+  for (const kw of DOOM_KEYWORDS) {
+    if (title.includes(kw)) {
+      return 'Entertainment';
+    }
+  }
+
+  // No strong signal — return null to fall back to default Social Media
+  return null;
+}
+
 // ─── UUID Generation ──────────────────────────────────────────────────────────
 
 async function ensureUserId() {
@@ -251,18 +305,45 @@ async function startTracking(url, tabId) {
     return;
   }
 
-  // Attempt to get YouTube specific genre
+  // Attempt to get YouTube specific classification
   if (domain === 'youtube.com' && tabId && url.includes('/watch')) {
     try {
       const results = await chrome.scripting.executeScript({
         target: { tabId },
         func: () => {
-          const m = document.querySelector('meta[itemprop="genre"]');
-          return m ? m.content : null;
+          // 1. Try official genre meta tag
+          const genreMeta = document.querySelector('meta[itemprop="genre"]');
+          if (genreMeta && genreMeta.content) {
+            return { type: 'genre', value: genreMeta.content };
+          }
+
+          // 2. Get video title for keyword analysis
+          const title = document.querySelector('h1.ytd-watch-metadata yt-formatted-string')?.textContent
+                     || document.querySelector('meta[name="title"]')?.content
+                     || document.title
+                     || '';
+
+          // 3. Get channel name for allowlist matching
+          const channel = document.querySelector('#channel-name a')?.textContent
+                       || document.querySelector('ytd-channel-name a')?.textContent
+                       || '';
+
+          return { type: 'fallback', title: title.toLowerCase(), channel: channel.toLowerCase() };
         }
       });
+
       if (results && results[0] && results[0].result) {
-        domain = `youtube.com (${results[0].result})`;
+        const data = results[0].result;
+        
+        if (data.type === 'genre') {
+          domain = `youtube.com (${data.value})`;
+        } else if (data.type === 'fallback') {
+          // Classify based on title keywords
+          const classification = classifyYouTubeContent(data.title, data.channel);
+          if (classification) {
+            domain = `youtube.com (${classification})`;
+          }
+        }
       }
     } catch(e) {}
   }

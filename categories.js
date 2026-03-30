@@ -315,18 +315,30 @@ function categorize(domain) {
     const genre = domain.slice(13, -1);
     
     // Map YouTube API genres to DoomTab categories
+    // Full list: https://developers.google.com/youtube/v3/docs/videoCategories
     const genreMap = {
-      'Music': 'Music',
-      'Gaming': 'Gaming',
-      'Entertainment': 'Entertainment',
-      'Comedy': 'Entertainment',
-      'Film & Animation': 'Entertainment',
-      'Sports': 'Sports & Fantasy',
+      // Productive → Education
       'Education': 'Education',
       'Science & Technology': 'Education',
       'Howto & Style': 'Education',
+      'Nonprofits & Activism': 'Education',
+      
+      // Neutral
+      'Music': 'Music',
       'News & Politics': 'News',
+      'Travel & Events': 'News',
+      
+      // Doom → Entertainment/Social/Gaming/Sports
+      'Entertainment': 'Entertainment',
+      'Comedy': 'Entertainment',
+      'Film & Animation': 'Entertainment',
+      'Shows': 'Entertainment',
+      'Trailers': 'Entertainment',
+      'Gaming': 'Gaming',
+      'Sports': 'Sports & Fantasy',
       'People & Blogs': 'Social Media',
+      'Pets & Animals': 'Entertainment',
+      'Autos & Vehicles': 'Entertainment',
     };
     
     if (genreMap[genre]) return genreMap[genre];
