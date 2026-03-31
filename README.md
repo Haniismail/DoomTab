@@ -34,7 +34,7 @@ A real-time focus score (0–100%) based on your productive vs. distraction time
 - Shows how many hours you have left to save the day
 
 ### 🔥 Duolingo-Style Streaks
-Consecutive days with 60%+ focus score build your streak. A 14-day calendar grid tracks your history. Break the streak? You'll feel it.
+Consecutive days with 51%+ focus score build your streak. A 14-day calendar grid tracks your history. Break the streak? You'll feel it.
 - **Streak Alarm** — 2 hours before midnight, if you're below threshold, you get a notification warning
 
 ### 🐇 Anti Rabbit Hole — Real-Time Interventions

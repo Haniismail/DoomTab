@@ -514,7 +514,7 @@ async function renderRabbitHole() {
 
 // ─── Streak Tab ──────────────────────────────────────────────────────────────
 
-const STREAK_THRESHOLD = 60; // focus score % needed for a "good" day
+const STREAK_THRESHOLD = 51; // focus score % needed for a "good" day
 
 async function renderStreak(currentEntries) {
   const allData = await chrome.storage.local.get(null);

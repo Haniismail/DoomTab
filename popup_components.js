@@ -315,7 +315,7 @@ function renderInsight(entries, score) {
     ? `${hoursLeft}h left to save the day`
     : hoursLeft === 1 ? '1h left' : 'Day is almost over';
 
-  const ptsNeeded = Math.max(0, 60 - Math.round(score));
+  const ptsNeeded = Math.max(0, 51 - Math.round(score));
 
   let msg = '';
   let sub = '';
@@ -323,7 +323,7 @@ function renderInsight(entries, score) {
 
   if (todayView === 'good') {
     // ── Good View: highlight productive potential ──
-    if (score >= 60) {
+    if (score >= 51) {
       tone = 'ok';
       if (goodDomains.length >= 2) {
         msg = `\u2728 ${goodDomains[0].domain} and ${goodDomains[1].domain} are carrying your focus today`;
@@ -362,7 +362,7 @@ function renderInsight(entries, score) {
       sub = hoursLeft > 0
         ? `${ptsNeeded}% more productive time needed \u00b7 ${timeLeftText}`
         : `Streak at risk \u2014 ${ptsNeeded}% gap`;
-    } else if (score < 60) {
+    } else if (score < 51) {
       tone = 'warn';
       if (doomDomains.length >= 1) {
         msg = `\u26a1 ${doomDomains[0].domain} is pulling your score down`;

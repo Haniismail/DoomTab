@@ -211,7 +211,7 @@ async function checkStreakWarning() {
   if (scored === 0) return;
   const score = Math.round((productive / scored) * 100);
 
-  if (score >= 60) return; // they're fine
+  if (score >= 51) return; // they're fine
 
   // Check if they had a streak going (look at yesterday)
   const yesterday = new Date();
@@ -235,7 +235,7 @@ async function checkStreakWarning() {
   if (yScored === 0) return;
   const yScore = Math.round((yProd / yScored) * 100);
 
-  if (yScore < 60) return; // no streak to lose anyway
+  if (yScore < 51) return; // no streak to lose anyway
 
   // They had a streak yesterday and are about to lose it!
   try {
@@ -243,7 +243,7 @@ async function checkStreakWarning() {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: '🔥 Your streak is in danger!',
-      message: `Your focus score is ${score}% — you need ≥60% to keep your streak alive. 2 hours left!`,
+      message: `Your focus score is ${score}% — you need ≥51% to keep your streak alive. 2 hours left!`,
       priority: 2,
     });
   } catch { /* notifications permission might not be granted */ }
