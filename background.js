@@ -21,13 +21,17 @@ importScripts('categories.js');
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getMsUntilMidnight() {
   const now = new Date();
   const midnight = new Date(now);
-  midnight.setUTCHours(24, 0, 0, 0);
+  midnight.setHours(24, 0, 0, 0); // Local midnight, not UTC
   return midnight.getTime() - now.getTime();
 }
 
