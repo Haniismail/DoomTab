@@ -15,7 +15,7 @@ const SITE_DB = new Map([
   ['tiktok.com', 'Social Media'],
   ['reddit.com', 'Social Media'], ['old.reddit.com', 'Social Media'],
   ['snapchat.com', 'Social Media'],
-  ['linkedin.com', 'Social Media'],
+  ['linkedin.com', 'Productivity'],
   ['threads.net', 'Social Media'],
   ['pinterest.com', 'Social Media'],
   ['tumblr.com', 'Social Media'],
@@ -404,19 +404,39 @@ function computeFocusBreakdown(entries, role) {
 
 function groupByCategory(entries) {
   const groups = {};
+  // Track YouTube genre breakdown separately
+  const youtubeGenres = {};
+
   for (const [rawDomain, sec] of entries) {
     const cat = categorize(rawDomain);
-    const domain = rawDomain.split(' (')[0]; // Strip the genre for display
+    const domain = rawDomain.split(' (')[0].replace(/^www\./, ''); // Strip genre and www. for display
 
-    if (!groups[cat]) groups[cat] = { total: 0, domains: [] };
+    // Track YouTube genres
+    if (rawDomain.startsWith('youtube.com (')) {
+      const genre = rawDomain.slice(13, -1);
+      youtubeGenres[genre] = (youtubeGenres[genre] || 0) + sec;
+    }
+
+    if (!groups[cat]) groups[cat] = { total: 0, domains: [], youtubeGenres: {} };
     groups[cat].total += sec;
     
     // Merge repetitive domains in the same category
     const existing = groups[cat].domains.find(d => d.domain === domain);
     if (existing) {
       existing.sec += sec;
+      // Also track genres per domain
+      if (rawDomain.startsWith('youtube.com (')) {
+        const genre = rawDomain.slice(13, -1);
+        if (!existing.genres) existing.genres = {};
+        existing.genres[genre] = (existing.genres[genre] || 0) + sec;
+      }
     } else {
-      groups[cat].domains.push({ domain, sec });
+      const domainEntry = { domain, sec };
+      if (rawDomain.startsWith('youtube.com (')) {
+        const genre = rawDomain.slice(13, -1);
+        domainEntry.genres = { [genre]: sec };
+      }
+      groups[cat].domains.push(domainEntry);
     }
   }
 

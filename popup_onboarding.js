@@ -51,10 +51,32 @@ function renderGreeting(animate = false) {
 // Pulses the header dot with a vivid glow when the extension is actively tracking
 
 async function updateTrackingDot() {
-  const dot = document.querySelector('.header-dot');
+  const dot = document.getElementById('header-dot');
   if (!dot) return;
-  const { _activeTab } = await chrome.storage.local.get('_activeTab');
-  dot.classList.toggle('tracking', !!_activeTab);
+  const { _activeTab, _paused } = await chrome.storage.local.get(['_activeTab', '_paused']);
+  dot.classList.toggle('tracking', !!_activeTab && !_paused);
+  dot.classList.toggle('paused', !!_paused);
+}
+
+// ─── Pause Button ─────────────────────────────────────────────────────────────
+
+async function initPauseButton() {
+  const btn = document.getElementById('pause-btn');
+  if (!btn) return;
+
+  // Set initial state
+  const { _paused } = await chrome.storage.local.get('_paused');
+  btn.textContent = _paused ? '▶' : '⏸';
+  btn.title = _paused ? 'Resume tracking' : 'Pause tracking';
+  btn.classList.toggle('paused', !!_paused);
+
+  btn.addEventListener('click', async () => {
+    const response = await chrome.runtime.sendMessage({ type: 'DOOMTAB_TOGGLE_PAUSE' });
+    btn.textContent = response.paused ? '▶' : '⏸';
+    btn.title = response.paused ? 'Resume tracking' : 'Pause tracking';
+    btn.classList.toggle('paused', response.paused);
+    await updateTrackingDot();
+  });
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -69,6 +91,7 @@ function initOnboarding() {
     main.classList.add('visible');
     renderGreeting();
     updateTrackingDot();
+    initPauseButton();
     return;
   }
 
@@ -96,28 +119,55 @@ function initOnboarding() {
     main.classList.add('visible', 'fade-in');
     renderGreeting(true);
     updateTrackingDot();
+    initPauseButton();
 
     const entries = dateEntries(storage, window.currentDayOffset || 0);
     renderAll(entries);
   });
 }
 
-// ─── Settings (reset name) ────────────────────────────────────────────────────
+// ─── Settings Modal ────────────────────────────────────────────────────────────
 
 function initSettings() {
-  document.getElementById('settings-btn').addEventListener('click', async () => {
-    await chrome.storage.local.remove(['_userRole', '_userName']);
-    userRole = null;
-    userName = null;
+  const overlay = document.getElementById('settings-overlay');
+  const nameInput = document.getElementById('settings-name');
+  const saveBtn = document.getElementById('settings-save');
+  const closeBtn = document.getElementById('settings-close');
 
-    const onb  = document.getElementById('onboarding');
-    const main = document.getElementById('main-ui');
-    const nameInput = document.getElementById('onb-name-input');
+  // Open settings
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    nameInput.value = userName || '';
+    overlay.classList.add('visible');
+    nameInput.focus();
+  });
 
-    nameInput.value = '';
-    document.getElementById('onb-name-btn').disabled = true;
+  // Close settings
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('visible');
+  });
 
-    main.classList.remove('visible');
-    onb.classList.remove('hidden');
+  // Close on overlay click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('visible');
+    }
+  });
+
+  // Save settings
+  saveBtn.addEventListener('click', async () => {
+    const newName = nameInput.value.trim();
+    if (!newName) return;
+
+    userName = newName;
+    await chrome.storage.local.set({ _userName: newName });
+    
+    renderGreeting();
+    overlay.classList.remove('visible');
+  });
+
+  // Enter to save
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveBtn.click();
+    if (e.key === 'Escape') closeBtn.click();
   });
 }

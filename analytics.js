@@ -51,12 +51,111 @@ function analyzePatterns(allData, role) {
   const result = {
     daysOfData,
     minDays: 2, // 2 instead of 3 to show data sooner
+    weeklyStats: null,
     dailyRegulars: [],
     categoryTrends: [],
+    youtubeGenres: [],
     routines: [],
   };
 
   if (daysOfData < 2) return result;
+
+  // ── Weekly Stats ──
+  const thisWeek = archives.slice(-7);
+  let doomSec = 0, flowSec = 0, neutralSec = 0;
+  const dayScores = [];
+
+  // Calculate this week's totals
+  thisWeek.forEach(day => {
+    let dayDoom = 0, dayFlow = 0, dayNeutral = 0;
+    day.domains.forEach(([d, s]) => {
+      const type = _classifyDomain(d, role);
+      if (type === 'distraction') { doomSec += s; dayDoom += s; }
+      else if (type === 'productive') { flowSec += s; dayFlow += s; }
+      else { neutralSec += s; dayNeutral += s; }
+    });
+    const dayTotal = dayDoom + dayFlow + dayNeutral;
+    if (dayTotal > 0) {
+      dayScores.push({
+        date: day.date,
+        score: Math.round((dayFlow / dayTotal) * 100),
+        doom: dayDoom,
+        flow: dayFlow,
+      });
+    }
+  });
+
+  // Add today
+  let todayDoom = 0, todayFlow = 0, todayNeutral = 0;
+  todayDomains.forEach(([d, s]) => {
+    const type = _classifyDomain(d, role);
+    if (type === 'distraction') { doomSec += s; todayDoom += s; }
+    else if (type === 'productive') { flowSec += s; todayFlow += s; }
+    else { neutralSec += s; todayNeutral += s; }
+  });
+  const todayTotal = todayDoom + todayFlow + todayNeutral;
+  if (todayTotal > 0) {
+    dayScores.push({
+      date: 'Today',
+      score: Math.round((todayFlow / todayTotal) * 100),
+      doom: todayDoom,
+      flow: todayFlow,
+    });
+  }
+
+  // Find best/worst days
+  const bestDay = dayScores.reduce((a, b) => (b.score > a.score ? b : a), dayScores[0]);
+  const worstDay = dayScores.reduce((a, b) => (b.score < a.score ? b : a), dayScores[0]);
+
+  const totalWeek = doomSec + flowSec + neutralSec;
+  const avgScore = totalWeek > 0 ? Math.round((flowSec / totalWeek) * 100) : 0;
+
+  result.weeklyStats = {
+    doomTime: doomSec,
+    flowTime: flowSec,
+    neutralTime: neutralSec,
+    avgScore,
+    bestDay: bestDay ? { date: bestDay.date, score: bestDay.score } : null,
+    worstDay: worstDay ? { date: worstDay.date, score: worstDay.score } : null,
+    daysTracked: dayScores.length,
+  };
+
+  // ── YouTube Genres (doom genres only) ──
+  const genreSeconds = {};
+  const doomGenres = new Set(['Gaming', 'Entertainment', 'Comedy', 'Film & Animation', 
+    'Sports', 'People & Blogs', 'Pets & Animals', 'Autos & Vehicles']);
+  
+  // Collect from archives
+  archives.forEach(day => {
+    day.domains.forEach(([d, s]) => {
+      if (d.startsWith('youtube.com (')) {
+        const genre = d.slice(13, -1);
+        if (doomGenres.has(genre)) {
+          genreSeconds[genre] = (genreSeconds[genre] || 0) + s;
+        }
+      }
+    });
+  });
+  
+  // Collect from today
+  todayDomains.forEach(([d, s]) => {
+    if (d.startsWith('youtube.com (')) {
+      const genre = d.slice(13, -1);
+      if (doomGenres.has(genre)) {
+        genreSeconds[genre] = (genreSeconds[genre] || 0) + s;
+      }
+    }
+  });
+  
+  const totalGenreSec = Object.values(genreSeconds).reduce((a, b) => a + b, 0);
+  result.youtubeGenres = Object.entries(genreSeconds)
+    .map(([genre, sec]) => ({
+      genre,
+      seconds: sec,
+      pct: totalGenreSec > 0 ? Math.round((sec / totalGenreSec) * 100) : 0,
+    }))
+    .sort((a, b) => b.seconds - a.seconds)
+    .slice(0, 5);
 
   // ── Daily Regulars ──
   // Count how many days each domain appears (last 7 days)
@@ -87,21 +186,25 @@ function analyzePatterns(allData, role) {
 
   const totalDaysConsidered = Math.min(last7.length + 1, 7);
 
-  result.dailyRegulars = Object.entries(domainDayCount)
+  const allRegulars = Object.entries(domainDayCount)
     .filter(([, count]) => count >= 3)
     .map(([domain, count]) => ({
-      domain,
+      domain: domain.replace(/^www\./, ''), // Strip www. for display
       daysPresent: count,
       totalDays: totalDaysConsidered,
       avgSeconds: Math.round(domainTotalSec[domain] / count),
       category: categorize(domain),
       type: _classifyDomain(domain, role),
     }))
-    .sort((a, b) => b.daysPresent - a.daysPresent || b.avgSeconds - a.avgSeconds)
-    .slice(0, 8);
+    .sort((a, b) => b.daysPresent - a.daysPresent || b.avgSeconds - a.avgSeconds);
+
+  // Separate doom and flow, limit to top 5 each
+  const doomRegulars = allRegulars.filter(r => r.type === 'distraction').slice(0, 5);
+  const flowRegulars = allRegulars.filter(r => r.type === 'productive').slice(0, 5);
+  result.dailyRegulars = [...doomRegulars, ...flowRegulars];
 
   // ── Category Trends (this week vs last week) ──
-  const thisWeek = archives.slice(-7);
+  // Note: thisWeek already defined above for weekly stats
   const lastWeek = archives.slice(-14, -7);
 
   function catSeconds(days) {
@@ -341,7 +444,7 @@ function analyzeFocusWindows(allData, role) {
       const score = scored > 0 ? Math.round((data.productive / scored) * 100) : -1;
       return {
         hour: parseInt(hr, 10),
-        label: `${parseInt(hr, 10) % 12 || 12}${parseInt(hr, 10) < 12 ? 'a' : 'p'}`,
+        label: `${parseInt(hr, 10) % 12 || 12}${parseInt(hr, 10) < 12 ? 'am' : 'pm'}`,
         ...data,
         total,
         score,

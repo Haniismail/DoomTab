@@ -42,7 +42,11 @@ function extractDomain(url) {
       url.startsWith('about:') ||
       url.startsWith('edge://') ||
       url.startsWith('moz-extension://')) return null;
-  try { return new URL(url).hostname || null; } catch { return null; }
+  try {
+    const hostname = new URL(url).hostname;
+    // Strip www. prefix for consistency
+    return hostname ? hostname.replace(/^www\./, '') : null;
+  } catch { return null; }
 }
 
 function fmtBg(sec) {
@@ -105,6 +109,43 @@ function classifyYouTubeContent(title, channel) {
 
   // No strong signal — return null to fall back to default Social Media
   return null;
+}
+
+// ─── Pause State ──────────────────────────────────────────────────────────────
+
+async function isPaused() {
+  const { _paused } = await chrome.storage.local.get('_paused');
+  return _paused === true;
+}
+
+async function setPaused(paused) {
+  await chrome.storage.local.set({ _paused: paused });
+  if (paused) {
+    // Stop tracking and show paused badge
+    await pauseTracking();
+    chrome.action.setBadgeText({ text: '⏸' });
+    chrome.action.setBadgeBackgroundColor({ color: '#e8c040' });
+    // Dim icon
+    chrome.action.setIcon({
+      path: {
+        16: 'icons/icon16-off.png',
+        48: 'icons/icon48-off.png',
+        128: 'icons/icon128-off.png'
+      }
+    });
+  } else {
+    // Resume tracking
+    chrome.action.setBadgeText({ text: '' });
+    // Light up icon
+    chrome.action.setIcon({
+      path: {
+        16: 'icons/icon16-on.png',
+        48: 'icons/icon48-on.png',
+        128: 'icons/icon128-on.png'
+      }
+    });
+    await resumeFromActiveTab();
+  }
 }
 
 // ─── UUID Generation ──────────────────────────────────────────────────────────
@@ -281,24 +322,8 @@ async function logTransition(fromDomain, toDomain) {
 }
 
 async function updateActionBadge(domain) {
-  if (!domain) {
-    chrome.action.setBadgeText({ text: '' });
-    return;
-  }
-  const { _userRole } = await chrome.storage.local.get('_userRole');
-  const role = _userRole || 'other';
-  const cat = categorize(domain);
-  const prodCats = ROLE_PRODUCTIVE[role] || ROLE_PRODUCTIVE.other;
-
-  if (DISTRACTION_CATEGORIES.includes(cat)) {
-    chrome.action.setBadgeText({ text: 'DOOM' });
-    chrome.action.setBadgeBackgroundColor({ color: '#e84060' });
-  } else if (prodCats.includes(cat)) {
-    chrome.action.setBadgeText({ text: 'WORK' });
-    chrome.action.setBadgeBackgroundColor({ color: '#56c9a0' });
-  } else {
-    chrome.action.setBadgeText({ text: '' }); // Neutral or Uncategorized
-  }
+  // Just clear the badge - no colored DOOM/WORK indicators
+  chrome.action.setBadgeText({ text: '' });
 }
 
 async function startTracking(url, tabId) {
@@ -310,7 +335,8 @@ async function startTracking(url, tabId) {
   }
 
   // Attempt to get YouTube specific classification
-  if (domain === 'youtube.com' && tabId && url.includes('/watch')) {
+  const domainNoWww = domain.replace(/^www\./, '');
+  if ((domainNoWww === 'youtube.com' || domainNoWww === 'm.youtube.com') && tabId && url.includes('/watch')) {
     try {
       const results = await chrome.scripting.executeScript({
         target: { tabId },
@@ -346,10 +372,19 @@ async function startTracking(url, tabId) {
           const classification = classifyYouTubeContent(data.title, data.channel);
           if (classification) {
             domain = `youtube.com (${classification})`;
+          } else {
+            // No genre detected, but normalize to youtube.com without www
+            domain = 'youtube.com';
           }
         }
+      } else {
+        // Script ran but no result, normalize domain
+        domain = 'youtube.com';
       }
-    } catch(e) {}
+    } catch(e) {
+      // Script injection failed, normalize domain anyway
+      domain = 'youtube.com';
+    }
   }
 
   await chrome.storage.local.set({ _activeTab: { url, tabId, domain }, _startTime: Date.now() });
@@ -358,6 +393,9 @@ async function startTracking(url, tabId) {
 }
 
 async function transition(newUrl, newTabId) {
+  // Don't track if paused
+  if (await isPaused()) return;
+  
   await checkAndResetIfNewDay();
   const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
 
@@ -384,6 +422,9 @@ async function pauseTracking() {
 }
 
 async function resumeFromActiveTab() {
+  // Don't resume if paused
+  if (await isPaused()) return;
+  
   await checkAndResetIfNewDay();
   try {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -394,6 +435,9 @@ async function resumeFromActiveTab() {
 // ─── Heartbeat ────────────────────────────────────────────────────────────────
 
 async function heartbeatFlush() {
+  // Don't flush if paused
+  if (await isPaused()) return;
+  
   const { _activeTab, _startTime } = await chrome.storage.local.get(['_activeTab', '_startTime']);
   if (!_activeTab || !_startTime) return;
   await flushTime(_activeTab, _startTime);
@@ -438,8 +482,8 @@ async function checkRabbitHole(fromDomain, toDomain, tabId) {
 
   // Sensitivity thresholds
   const thresholds = {
-    aggressive: 60,    // 1 min on category → intervene
-    moderate: 300,     // 5 min on category → intervene
+    aggressive: 300,   // 5 min on category → intervene
+    moderate: 600,     // 10 min on category → intervene
     chill: 900,        // 15 min on category → intervene
   };
   const threshold = thresholds[settings.sensitivity] || thresholds.moderate;
@@ -560,8 +604,15 @@ async function checkRabbitHole(fromDomain, toDomain, tabId) {
       triggerCount: triggerCount,
     });
 
-    // Log the intervention
+    // Log and count the intervention
     await logIntervention(toDomain, 'shown');
+    
+    // Increment shown stat when intervention is displayed
+    const { _rabbitHole: rhStats } = await chrome.storage.local.get('_rabbitHole');
+    const rhData = rhStats || { enabled: true, sensitivity: 'moderate' };
+    if (!rhData.stats) rhData.stats = { shown: 0, closed: 0, continued: 0, snoozed: 0 };
+    rhData.stats.shown++;
+    await chrome.storage.local.set({ _rabbitHole: rhData });
   } catch (e) {
     // Can't inject on some pages (chrome://, etc.) — ignore
   }
@@ -578,6 +629,23 @@ async function logIntervention(domain, action) {
 // ─── Message Handling (from content script) ──────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'DOOMTAB_TOGGLE_PAUSE') {
+    (async () => {
+      const paused = await isPaused();
+      await setPaused(!paused);
+      sendResponse({ paused: !paused });
+    })();
+    return true;
+  }
+
+  if (msg.type === 'DOOMTAB_GET_PAUSE_STATE') {
+    (async () => {
+      const paused = await isPaused();
+      sendResponse({ paused });
+    })();
+    return true;
+  }
+
   if (msg.type !== 'DOOMTAB_RESPONSE') return;
 
   (async () => {
@@ -594,11 +662,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await chrome.storage.local.set({ _rabbitSnooze: snooze });
     }
 
-    // Update stats
+    // Update action stats (shown is counted when intervention appears, not here)
     const { _rabbitHole } = await chrome.storage.local.get('_rabbitHole');
     const rh = _rabbitHole || { enabled: true, sensitivity: 'moderate' };
     if (!rh.stats) rh.stats = { shown: 0, closed: 0, continued: 0, snoozed: 0 };
-    rh.stats.shown++;
     if (msg.action === 'close') rh.stats.closed++;
     else if (msg.action === 'continue') rh.stats.continued++;
     else if (msg.action === 'later') rh.stats.snoozed++;
@@ -617,6 +684,13 @@ chrome.runtime.onInstalled.addListener(async () => {
   await scheduleMidnightAlarm();
   await scheduleHeartbeat();
   await scheduleStreakCheck();
+  // Set icon based on pause state
+  const paused = await isPaused();
+  chrome.action.setIcon({
+    path: paused
+      ? { 16: 'icons/icon16-off.png', 48: 'icons/icon48-off.png', 128: 'icons/icon128-off.png' }
+      : { 16: 'icons/icon16-on.png', 48: 'icons/icon48-on.png', 128: 'icons/icon128-on.png' }
+  });
   await resumeFromActiveTab();
 });
 
@@ -625,6 +699,13 @@ chrome.runtime.onStartup.addListener(async () => {
   await scheduleMidnightAlarm();
   await scheduleHeartbeat();
   await scheduleStreakCheck();
+  // Set icon based on pause state
+  const paused = await isPaused();
+  chrome.action.setIcon({
+    path: paused
+      ? { 16: 'icons/icon16-off.png', 48: 'icons/icon48-off.png', 128: 'icons/icon128-off.png' }
+      : { 16: 'icons/icon16-on.png', 48: 'icons/icon48-on.png', 128: 'icons/icon128-on.png' }
+  });
   await resumeFromActiveTab();
 });
 

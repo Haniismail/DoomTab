@@ -24,40 +24,6 @@ function renderPatterns() {
 
   container.innerHTML = '';
 
-  // ── Daily Regulars ──
-  if (data.dailyRegulars.length > 0) {
-    const sec = document.createElement('div');
-    sec.className = 'a-section';
-
-    const head = document.createElement('div');
-    head.className = 'a-section-head';
-    head.textContent = 'Your Regulars';
-    sec.appendChild(head);
-
-    data.dailyRegulars.forEach(r => {
-      const row = document.createElement('div');
-      row.className = 'p-regular';
-
-      const dot = document.createElement('span');
-      dot.className = 'p-type-dot';
-      dot.style.background = r.type === 'productive' ? '#56c9a0' :
-        r.type === 'distraction' ? '#e84060' : '#505068';
-
-      const domain = document.createElement('span');
-      domain.className = 'p-domain';
-      domain.textContent = r.domain;
-
-      const meta = document.createElement('span');
-      meta.className = 'p-meta';
-      meta.textContent = `${r.daysPresent}/${r.totalDays}d · avg ${fmt(r.avgSeconds)}`;
-
-      row.append(dot, domain, meta);
-      sec.appendChild(row);
-    });
-
-    container.appendChild(sec);
-  }
-
   // ── Category Trends ──
   if (data.categoryTrends.length > 0) {
     const sec = document.createElement('div');
@@ -89,17 +55,85 @@ function renderPatterns() {
       const pct = document.createElement('span');
       pct.className = 'trend-pct';
       if (t.delta > 0) {
-        pct.classList.add('trend-up');
         pct.textContent = `${t.thisWeekPct}% ↑${t.delta}`;
       } else if (t.delta < 0) {
-        pct.classList.add('trend-down');
         pct.textContent = `${t.thisWeekPct}% ↓${Math.abs(t.delta)}`;
       } else {
-        pct.classList.add('trend-flat');
         pct.textContent = `${t.thisWeekPct}%`;
       }
 
       row.append(name, track, pct);
+      sec.appendChild(row);
+    });
+
+    container.appendChild(sec);
+  }
+
+  // ── YouTube Genres (doom only) ──
+  if (data.youtubeGenres.length > 0) {
+    const sec = document.createElement('div');
+    sec.className = 'a-section';
+
+    const head = document.createElement('div');
+    head.className = 'a-section-head';
+    head.textContent = '📺 YouTube Doom Genres';
+    sec.appendChild(head);
+
+    data.youtubeGenres.forEach(g => {
+      const row = document.createElement('div');
+      row.className = 'trend-row';
+
+      const name = document.createElement('span');
+      name.className = 'trend-name';
+      name.textContent = g.genre;
+
+      const track = document.createElement('div');
+      track.className = 'trend-bar-track';
+      const fill = document.createElement('div');
+      fill.className = 'trend-bar-fill';
+      fill.style.width = `${g.pct}%`;
+      fill.style.background = '#e84060';
+      track.appendChild(fill);
+
+      const pct = document.createElement('span');
+      pct.className = 'trend-pct';
+      pct.textContent = `${g.pct}% · ${fmt(g.seconds)}`;
+
+      row.append(name, track, pct);
+      sec.appendChild(row);
+    });
+
+    container.appendChild(sec);
+  }
+
+  // ── Daily Regulars ──
+  if (data.dailyRegulars.length > 0) {
+    const sec = document.createElement('div');
+    sec.className = 'a-section';
+
+    const head = document.createElement('div');
+    head.className = 'a-section-head';
+    head.textContent = 'Your Regulars';
+    sec.appendChild(head);
+
+    data.dailyRegulars.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'p-regular';
+
+      const dot = document.createElement('span');
+      dot.className = 'p-type-dot';
+      dot.style.background = r.type === 'productive' ? '#56c9a0' :
+        r.type === 'distraction' ? '#e84060' : '#505068';
+
+      const domain = document.createElement('span');
+      domain.className = 'p-domain';
+      domain.textContent = r.domain;
+
+      const meta = document.createElement('span');
+      meta.className = 'p-meta';
+      meta.textContent = `${r.daysPresent}/${r.totalDays}d · avg ${fmt(r.avgSeconds)}`;
+
+      row.append(dot, domain, meta);
       sec.appendChild(row);
     });
 
@@ -257,7 +291,7 @@ function renderTriggers() {
     head.textContent = 'Rapid Switching';
     sec.appendChild(head);
 
-    data.rapidSwitching.forEach(r => {
+    data.rapidSwitching.slice(0, 10).forEach(r => {
       const row = document.createElement('div');
       row.className = 'rapid-row';
 

@@ -5,6 +5,7 @@
 let storage = {};
 let userRole = null;
 let userName = null;
+let weeklyMode = false; // Toggle between daily and weekly view
 
 async function load() {
   storage = await chrome.storage.local.get(null);

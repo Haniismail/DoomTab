@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8A2BE2" />
+      <stop offset="50%" stop-color="#00D1FF" />
+      <stop offset="100%" stop-color="#8A2BE2" />
+    </linearGradient>
+    <filter id="glow-effect" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Circular background -->
+  <circle cx="50" cy="50" r="50" fill="#0D0D0D"/>
+  
+  <!-- Outer ring - ON state -->
+  <circle cx="50" cy="50" r="38" stroke="url(#liquid-grad)" stroke-width="8" fill="none" filter="url(#glow-effect)" />
+  
+  <!-- Inner core - ON state -->
+  <circle cx="50" cy="50" r="16" fill="#8A2BE2" filter="url(#glow-effect)" />
+</svg>

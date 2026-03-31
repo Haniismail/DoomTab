@@ -50,3 +50,34 @@ function dateEntries(allData, offsetDays = 0) {
       .sort(([,a],[,b]) => b - a);
   }
 }
+
+// Get weekly aggregated entries (last 7 days including today)
+function weeklyEntries(allData) {
+  const merged = {};
+  
+  // Get archives for last 6 days
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = `_day_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const archive = allData[key];
+    if (archive) {
+      Object.entries(archive)
+        .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number')
+        .forEach(([domain, sec]) => {
+          merged[domain] = (merged[domain] || 0) + sec;
+        });
+    }
+  }
+  
+  // Add today's data
+  Object.entries(allData)
+    .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number')
+    .forEach(([domain, sec]) => {
+      merged[domain] = (merged[domain] || 0) + sec;
+    });
+  
+  return Object.entries(merged)
+    .filter(([, v]) => v >= MIN_SECONDS)
+    .sort(([,a],[,b]) => b - a);
+}

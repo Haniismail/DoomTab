@@ -40,14 +40,14 @@ function renderScoreRing(score) {
     ctx.stroke();
 
     // Score number
-    ctx.fillStyle = '#ecedf0';
+    ctx.fillStyle = cssVar('--text-primary') || '#ecedf0';
     ctx.font = `bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${score}%`, cx, cy - 3);
 
     // Label
-    ctx.fillStyle = '#505068';
+    ctx.fillStyle = cssVar('--text-muted') || '#505068';
     ctx.font = `700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     ctx.letterSpacing = '1px';
     ctx.fillText('FOCUS', cx, cy + 18);
@@ -206,14 +206,36 @@ function renderToday(entries) {
 
     const maxDomain = domains.length > 0 ? Math.max(...domains.map(d => d.sec)) : 1;
 
-    domains.forEach(({ domain, sec }) => {
+    domains.forEach(({ domain, sec, genres }) => {
       const row = document.createElement('div');
       row.className = 'domain-row';
 
       const dName = document.createElement('span');
       dName.className = 'domain-name';
-      dName.textContent = domain;
-      dName.title = domain;
+      
+      // Show YouTube genres inline
+      if (domain === 'youtube.com' && genres && Object.keys(genres).length > 0) {
+        const genreList = Object.entries(genres)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3) // Top 3 genres
+          .map(([g, s]) => {
+            const pct = Math.round((s / sec) * 100);
+            return `${g} ${pct}%`;
+          })
+          .join(', ');
+        dName.textContent = `${domain}`;
+        dName.title = `${domain} — ${genreList}`;
+        
+        // Add genre breakdown as subtitle
+        const genreSpan = document.createElement('span');
+        genreSpan.className = 'domain-genres';
+        genreSpan.textContent = genreList;
+        dName.appendChild(document.createElement('br'));
+        dName.appendChild(genreSpan);
+      } else {
+        dName.textContent = domain;
+        dName.title = domain;
+      }
 
       const dTime = document.createElement('span');
       dTime.className = 'domain-time';
@@ -265,7 +287,7 @@ function renderToday(entries) {
 
       const name = document.createElement('span');
       name.className = 'top-site-name';
-      name.textContent = domain;
+      name.textContent = domain.replace(/^www\./, '');
 
       const time = document.createElement('span');
       time.className = 'top-site-time';
@@ -544,17 +566,159 @@ async function renderWeek() {
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 
-function exportCSV(entries) {
-  const rows = ['Domain,Category,Seconds,Time'];
-  entries.forEach(([d, s]) => {
-    const cat = categorize(d);
-    rows.push(`"${d}","${cat}",${s},"${fmt(s)}"`);
+function exportCSV(mode = 'daily') {
+  const allData = storage;
+  const role = userRole || 'other';
+  const today = todayKey();
+  
+  // Helper to format time nicely
+  const fmtTime = (s) => {
+    if (s < 60) return `${s}s`;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+  
+  // Helper to get type label
+  const getType = (domain) => {
+    const cat = categorize(domain);
+    const prodCats = PRODUCTIVE_FOR_ROLE[role] || PRODUCTIVE_FOR_ROLE['other'];
+    if (DISTRACTION_CATEGORIES.includes(cat)) return 'Doom';
+    if (prodCats.includes(cat)) return 'Flow';
+    return 'Neutral';
+  };
+  
+  // Determine date range based on mode
+  let dateRange = [];
+  if (mode === 'weekly') {
+    // Last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dateRange.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    }
+  } else {
+    // Just today
+    dateRange = [today];
+  }
+  
+  // Collect rows
+  const allRows = [];
+  
+  // Add archived days that fall in range
+  const dayKeys = Object.keys(allData)
+    .filter(k => k.startsWith('_day_'))
+    .sort();
+  
+  dayKeys.forEach(dayKey => {
+    const dateStr = dayKey.replace('_day_', '');
+    if (!dateRange.includes(dateStr)) return;
+    
+    const dayData = allData[dayKey];
+    Object.entries(dayData)
+      .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && v >= 5)
+      .forEach(([domain, seconds]) => {
+        allRows.push({
+          date: dateStr,
+          domain,
+          category: categorize(domain),
+          type: getType(domain),
+          seconds,
+          time: fmtTime(seconds),
+        });
+      });
   });
-  const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  
+  // Add today's data if in range
+  if (dateRange.includes(today)) {
+    Object.entries(allData)
+      .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && v >= 5)
+      .forEach(([domain, seconds]) => {
+        allRows.push({
+          date: today,
+          domain,
+          category: categorize(domain),
+          type: getType(domain),
+          seconds,
+          time: fmtTime(seconds),
+        });
+      });
+  }
+  
+  // Sort by date desc, then by seconds desc
+  allRows.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.seconds - a.seconds;
+  });
+  
+  // Build CSV with headers
+  const headers = ['Date', 'Domain', 'Category', 'Type', 'Time Spent'];
+  const csvRows = [headers.join(',')];
+  
+  allRows.forEach(row => {
+    csvRows.push([
+      row.date,
+      `"${row.domain}"`,
+      `"${row.category}"`,
+      row.type,
+      `"${row.time}"`,
+    ].join(','));
+  });
+  
+  // Add summary section
+  csvRows.push('');
+  csvRows.push(`=== ${mode.toUpperCase()} SUMMARY ===`);
+  csvRows.push('');
+  
+  // Calculate totals by type
+  const totalByType = { Doom: 0, Flow: 0, Neutral: 0 };
+  const totalByCategory = {};
+  const totalByDomain = {};
+  
+  allRows.forEach(row => {
+    totalByType[row.type] = (totalByType[row.type] || 0) + row.seconds;
+    totalByCategory[row.category] = (totalByCategory[row.category] || 0) + row.seconds;
+    totalByDomain[row.domain] = (totalByDomain[row.domain] || 0) + row.seconds;
+  });
+  
+  csvRows.push('Type,Total Time');
+  csvRows.push(`Doom,"${fmtTime(totalByType.Doom)}"`);
+  csvRows.push(`Flow,"${fmtTime(totalByType.Flow)}"`);
+  csvRows.push(`Neutral,"${fmtTime(totalByType.Neutral)}"`);
+  csvRows.push('');
+  
+  // Top categories
+  csvRows.push('Top Categories');
+  csvRows.push('Category,Total Time');
+  Object.entries(totalByCategory)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10)
+    .forEach(([cat, sec]) => {
+      csvRows.push(`"${cat}","${fmtTime(sec)}"`);
+    });
+  csvRows.push('');
+  
+  // Top sites
+  csvRows.push('Top Sites');
+  csvRows.push('Domain,Total Time,Category,Type');
+  Object.entries(totalByDomain)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 20)
+    .forEach(([domain, sec]) => {
+      csvRows.push(`"${domain}","${fmtTime(sec)}","${categorize(domain)}",${getType(domain)}`);
+    });
+  
+  // Download
+  const filename = mode === 'weekly' 
+    ? `doomtab-weekly-${today}.csv`
+    : `doomtab-${today}.csv`;
+  
+  const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `doomtab-${todayKey()}.csv`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
